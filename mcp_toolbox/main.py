@@ -32,7 +32,12 @@ TOPICS = {
     "00_prompt_engineering": {
         "title": "Introduction to Prompt Engineering",
         "content": "Learn the basics of prompt engineering - how to write clear instructions for AI systems.",
-        "topic_id": "00_prompt_engineering"
+        "topic_id": "00_prompt_engineering",
+        "content_resource_urls": {
+            "01": "file://01_prompt_engineering.md",
+            "02": "file://02_six_part_prompting_framework.md",
+            "03": "file://03_context_engineering_tutorial.md"
+        }
     }
 }
 
@@ -77,7 +82,12 @@ def get_table_of_contents(course_id: str, auth_token: str) -> dict[str, Any]:
 )
 def get_personalized_content(topic_id: str, user_id: str, auth_token: str) -> dict[str, Any]:
     if topic_id in TOPICS:
-        return TOPICS[topic_id]
+        content_resource_urls = TOPICS[topic_id]["content_resource_urls"]
+        result = {}
+        # load content from resource urls from local filesystem
+        for key, url in content_resource_urls.items():
+            result[key] = open(url.replace("file://", "./"), "r").read()
+        return result
     raise ValueError(f"Topic {topic_id} not found")
 
 @mcp_app.tool(
@@ -96,12 +106,18 @@ def check_topic_completion(topic_id: str, user_id: str, auth_token: str) -> bool
 def get_current_topic(user_id: str, auth_token: str) -> dict[str, Any]:
     if user_id in STUDENTS:
         student = STUDENTS[user_id]
+        topic = TOPICS.get(student["active_cursor_position"]["topic_id"], {})
+        content_resource_urls = topic["content_resource_urls"]
+        result = {}
+        # load content from resource urls from local filesystem
+        for key, url in content_resource_urls.items():
+            result[key] = open(url.replace("file://", "./"), "r").read()
+
         return {
             "topic_id": student["active_cursor_position"]["topic_id"],
-            "title": TOPICS.get(student["active_cursor_position"]["topic_id"], {}).get("title", "Unknown Topic")
+            "topic_details": topic,
+            "topic_content_data": result
         }
-    # Default to prompt engineering - first topic of course
-    return {"topic_id": "00_prompt_engineering", "title": "Introduction to Prompt Engineering"}
 
 streamable_http_app: Starlette = mcp_app.streamable_http_app()
 
